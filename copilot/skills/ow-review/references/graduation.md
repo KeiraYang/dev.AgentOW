@@ -317,6 +317,62 @@ each prop, parameter, type member, ref creation, and forwarded argument that has
 consumer. Do not stop after replacing the original declarations with `void` reads or after deleting
 only the leaf expression.
 
+### Close UI state, lifecycle, structure, and test carriers
+
+For every changed UI component reached from a retired control, build the complete merge-base carrier
+graph before approving:
+
+`gate/wrapper -> selector or hook -> local state -> prop or option -> handler -> effect/observer/event
+-> ref/DOM attribute/wrapper -> mock/fixture/test`.
+
+Classify every reached node at HEAD as removed, preserved by the selected branch, or independently
+required. A gate-name search does not close this graph because downstream state, handlers, effects,
+DOM structure, and mocks commonly lose the original identifier.
+
+- A controlled interactive element must not survive with a permanent `checked`, `selected`,
+  `expanded`, `disabled`, or similar state while its handler still mutates the retired feature state.
+  This creates a visible and accessible state that cannot represent the action it just dispatched.
+  If the selected branch removes the feature, remove the control, handler, state/action plumbing, and
+  gate-only tests. If an independent KS can still expose a rollback UI, preserve a real state source
+  for that fallback and test the KS-visible interaction.
+- When a prop becomes unreachable, trace its receiving hook and every lifecycle consumer. Remove
+  gate-only `useEffect`/lifecycle blocks, `ResizeObserver`/`MutationObserver` instances, custom-event
+  dispatch, DOM queries, data attributes, refs, and cleanup functions. Preserve one only when a
+  surviving non-gate path still owns its behavior.
+- After a ref, class, event, or gate-only prop is removed, inspect its DOM wrapper. A wrapper with no
+  remaining class, event, semantic role, layout responsibility, ref, or reconciliation boundary is
+  graduation-created residue; suggest direct-child rendering as a non-blocking **Minor**. Preserve
+  wrappers whose removal could affect layout, identity, state, or an external contract.
+- Distinguish a retired-gate mock from an independent environment or eligibility helper. A new mock
+  is valid when source proves that the helper still enforces an independent cloud, tenant,
+  permission, capability, or compatibility predicate after the gate is replaced. Name and test the
+  independent behavior. Remove mocks that only emulate the retired gate or discarded branch.
+
+Run a post-substitution challenge sweep for fixed JSX state, handlers, effects/lifecycle methods,
+observers, custom events, DOM/data attributes, refs, wrapper-only elements, selectors/hooks, and
+mocks. In React/TSX this includes bounded searches for `checked`, `defaultChecked`, `selected`,
+`disabled`, `onChange`, `useEffect`, observer constructors, `CustomEvent`, `data-`, `ref`, and the
+merge-base selector/mock symbols. Account for every attributable hit; do not infer correctness from
+compilation or a no-match gate-name search.
+
+```tsx
+// Incorrect: the disabled Flight was replaced with false, but a rollback KS can still render a
+// controlled switch whose visible/ARIA state can never reflect the dispatched action.
+<Switch checked={false} onChange={setRetiredFeatureState} />
+
+// Correct when the selected branch removes the feature and no rollback UI remains.
+// Remove the switch, handler, selector/state plumbing, actions, and gate-only tests.
+
+// Correct when an independent KS intentionally preserves the rollback UI.
+<Switch checked={isFallbackEnabled} onChange={setFallbackEnabled} />
+```
+
+Substitute only the retired operand before simplifying composite UI predicates. For example,
+`independentKs() || retiredFlight()` with a permanently disabled Flight becomes
+`independentKs()`, not unconditional `true` and not removal of the independent KS. Conversely,
+`retiredFlight() && independentCondition` becomes unreachable in the disabled state. Use the full
+old expression as the substitution oracle for JSX visibility, state initialization, and effects.
+
 ```ts
 // Before graduation: dimensions serve only the retired Flight branch
 const width: number | undefined = containerDivRef?.current?.offsetWidth;
@@ -655,6 +711,17 @@ For every value made constant by graduation:
 15. When graduation leaves a permanent `css(base, modifier)` composition, search both style slots.
   If both now serve only that site and declarations can move with identical precedence and
   semantics, suggest merging the modifier into the base and deleting the extra slot.
+16. Build the UI carrier graph for every changed component: selectors/hooks, state, props/options,
+  handlers, effects/observers/events, refs/DOM attributes/wrappers, and mocks/tests. Account for
+  every reached node even when it no longer contains the gate name.
+17. Challenge every fixed controlled prop against surviving interaction handlers. Remove the
+  feature-owned UI entirely, or preserve state-backed behavior when an independent KS still exposes
+  a rollback surface.
+18. After removing a ref, prop, class, or event, inspect lifecycle code and wrapper elements. Remove
+  gate-only effects/observers/data attributes and suggest only proven-semantic-free wrappers as
+  Minor cleanup.
+19. Classify added or retained mocks by ownership. Keep independently meaningful cloud/tenant/
+  permission/capability helpers; remove retired-gate mocks and tests for discarded branches.
 
 Preserve comments by default, including comments that mention the Flight/KS but still explain
 surviving behavior. Remove or update a comment only when it is physically part of the deleted gate
