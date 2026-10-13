@@ -15,7 +15,22 @@ Missing optional context is not itself a defect, but the reviewer must state wha
 
 ### Reviewability gate
 
-Before detailed review, decide whether the change can be reviewed reliably as one unit. This is not the same as whether an agent can read every line. Measure Git numstat, then enumerate independent behavior units and high-risk domains (for example security, permissions, destructive writes, privacy/telemetry, shared UI, migration compatibility, or performance).
+Before detailed review, classify the change's scope shape, then decide whether it can be reviewed
+reliably as one unit. This is not the same as whether an agent can read every line. Measure Git
+numstat, enumerate behavior units and high-risk domains (for example security, permissions,
+destructive writes, privacy/telemetry, shared UI, migration compatibility, or performance), and
+record one of:
+
+- `independent-units`: the changed behaviors can be landed, validated, or rolled back separately;
+- `atomic-system-migration`: one repository-wide contract, rule, profile, generated baseline, or
+  mechanical migration must update all affected projects together to avoid a partial inconsistent
+  state;
+- `graduation-only`: the dedicated graduation exemption below applies.
+
+Do not infer independent units from package, project, or directory boundaries. A system migration
+may span many projects while remaining one atomic behavior unit. Claim `atomic-system-migration`
+only with source/tooling evidence for the shared contract, a specific partial-landing failure mode,
+and consistency/outlier checks whose path union covers every changed file.
 
 A graduation-only PR is exempt from every reviewability size and split threshold. This exemption
 applies only when every substantive change is retirement work under
@@ -26,19 +41,29 @@ count, behavior-unit count, or high-risk-domain count. Large graduation PRs are 
 complete retirement may span all callers and gate artifacts. The exemption removes only size and
 split limits; it does not relax whole-file coverage, consumer tracing, evidence, or defect findings.
 
-- At 5,000 or more total changed lines, the change is always `must-split`; generated/mechanical claims cannot override this hard ceiling.
-- At 2,000 or more substantive changed lines, the change is always `must-split`.
-- At 40 or more files, three or more independent behavior units, or four or more high-risk domains, presume `must-split`.
+- For `independent-units`, 5,000 or more total changed lines is `must-split`; ordinary
+  generated/mechanical claims cannot override this ceiling.
+- For `independent-units`, 2,000 or more substantive changed lines is `must-split`.
+- For `independent-units`, 40 or more files, three or more independent behavior units, or four or
+  more high-risk domains presume `must-split`.
 - A structurally large change below 2,000 substantive lines may remain reviewable only when it is one coherent behavior unit spanning at most two high-risk domains and every changed path has numstat-bound mechanical/generated evidence.
 - Reading every file, spending more time, or finding several defects is not evidence that the review is exhaustive.
+- A validated `atomic-system-migration` remains `reviewable` regardless of these size thresholds.
+  Review it as one unit: verify the transformation is consistent across the complete changed set,
+  inspect exceptions/outliers, and check rule/profile registration, manifests/configuration,
+  generated baselines, tests, and package/build boundaries. Do not emit a split recommendation
+  unless source proves genuinely independent, separately landable behavior.
 
-A `must-split` review still performs a preliminary risk scan so known defects are not lost, but it must:
+A `must-split` review still performs substantive review so known defects are not lost. It must:
 
 1. add an Important `reviewability` finding;
 2. state that findings are preliminary and non-exhaustive;
-3. propose at least two distinct, evidenced, independently reviewable split boundaries;
-4. continue reviewing the available change and report any independent Critical or Important defects;
+3. propose at least two distinct, evidenced, independently landable split boundaries;
+4. continue through every changed file, behavior unit, consumer path, rollout boundary, and relevant
+   test surface, reporting all independently validated defects;
 5. treat `reviewability` as advisory for verdict purposes: size, file count, or independent-unit count alone must not produce `REQUEST_CHANGES` or stop the review.
+6. record every genuinely unreviewed surface as a precise coverage gap; a split finding is not a
+   substitute for the substantive review.
 
 ## Required two-pass method
 
@@ -292,6 +317,7 @@ The reviewer writes both a concise `review.md` and a machine-readable `review.js
     ],
     "reviewability": {
       "status": "reviewable|must-split",
+      "scopeShape": "independent-units|atomic-system-migration|graduation-only",
       "changedFileCount": 1,
       "additions": 10,
       "deletions": 2,
@@ -301,6 +327,21 @@ The reviewer writes both a concise `review.md` and a machine-readable `review.js
       "highRiskDomains": ["<applicable risk domain>"],
       "rationale": "<why one review is or is not reliable>",
       "completenessClaim": "exhaustive|preliminary-non-exhaustive",
+      "substantiveReviewCompleted": true,
+      "coverageGaps": [],
+      "atomicSystemMigration": {
+        "rationale": "<required only for atomic-system-migration>",
+        "partialLandingRisk": "<specific inconsistency caused by splitting>",
+        "evidence": ["<source/tooling evidence for one shared migration contract>"],
+        "consistencyChecks": [
+          {
+            "name": "<uniform transformation, exceptions, manifest/config, tests, or package boundary>",
+            "paths": ["<changed paths; union across checks covers every changed file>"],
+            "evidence": ["<path:line or artifact evidence>"],
+            "conclusion": "<specific consistency/outlier result>"
+          }
+        ]
+      },
       "splitBoundaries": [{ "name": "<independent split>", "paths": ["src/example.ts"], "rationale": "<why this is independently reviewable>", "evidence": ["src/example.ts:1"] }]
     }
   },
@@ -371,9 +412,13 @@ The reviewer writes both a concise `review.md` and a machine-readable `review.js
 }
 ```
 
-Every behavior unit path must be Git-changed, and their union must cover every changed file. Every non-zero `generatedOrMechanicalLines` claim requires `mechanicalBreakdown` entries with a changed path, exact line count, specific rationale, and cited generation/mechanical evidence. Entry lines must sum exactly to the claim, and the aggregate claimed for each path cannot exceed that path's Git numstat churn. A structural large-change exception requires mechanical evidence for every changed path. A `must-split` report requires at least two distinct `splitBoundaries`, each with a specific name, changed paths, rationale, and evidence. Their union must cover every changed file; multi-file changes cannot assign a path to multiple splits. Its summary must explicitly say the scan is preliminary or non-exhaustive.
+Every behavior unit path must be Git-changed, and their union must cover every changed file. Every non-zero `generatedOrMechanicalLines` claim requires `mechanicalBreakdown` entries with a changed path, exact line count, specific rationale, and cited generation/mechanical evidence. Entry lines must sum exactly to the claim, and the aggregate claimed for each path cannot exceed that path's Git numstat churn. A structural large-change exception requires mechanical evidence for every changed path. An `atomic-system-migration` requires one behavior unit plus concrete shared-contract, partial-landing-risk, and consistency/outlier evidence; the union of `consistencyChecks.paths` must cover every changed file. It must not include split boundaries or a reviewability finding. A `must-split` report requires at least two distinct `splitBoundaries`, each with a specific name, changed paths, rationale, and evidence proving that boundary can land independently. Their union must cover every changed file; multi-file changes cannot assign a path to multiple splits. Its summary must explicitly say the scan is preliminary or non-exhaustive.
 
-`must-split` is a scope warning, not a review rejection. It applies equally to churn thresholds, file-count thresholds, independent behavior-unit count, and high-risk-domain count. The reviewer continues the available risk scan and leaves the Important split recommendation; only separate product defects can block the PR.
+`must-split` is a scope warning, not a review rejection. It applies to independently separable units
+that cross the applicable churn, file-count, behavior-unit, or risk-domain thresholds. The reviewer
+continues substantive review across the complete changed-file inventory and leaves the Important
+split recommendation; only separate product defects can block the PR. A report containing only a
+split recommendation without this substantive review is invalid.
 
 The complete set of dimension keys is enforced by `tools/validate-review-report.mjs`.
 
