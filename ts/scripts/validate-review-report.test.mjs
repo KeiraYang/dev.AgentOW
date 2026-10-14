@@ -142,6 +142,7 @@ function makeReport() {
       profileChecks: [],
       reviewability: {
         status: "reviewable",
+        scopeShape: "independent-units",
         changedFileCount: 1,
         additions: 10,
         deletions: 2,
@@ -151,6 +152,8 @@ function makeReport() {
         highRiskDomains: ["public contract"],
         rationale: "One focused behavior and one contract risk can be reviewed reliably as a single unit",
         completenessClaim: "exhaustive",
+        substantiveReviewCompleted: true,
+        coverageGaps: [],
         splitBoundaries: [],
       },
     },
@@ -559,6 +562,7 @@ assert.equal(validate(hardOversizeApproval).status, 1, "5000 or more substantive
 
 const hardOversizeGraduation = makeReport();
 hardOversizeGraduation.preReview.profiles.push("graduation-only");
+hardOversizeGraduation.preReview.reviewability.scopeShape = "graduation-only";
 hardOversizeGraduation.preReview.reviewability.additions = 5001;
 assert.equal(
   validate(hardOversizeGraduation).status,
@@ -599,6 +603,63 @@ hardOversizeBlocked.findings.push({
 hardOversizeBlocked.counts.important = 1;
 hardOversizeBlocked.verdict = "COMMENT";
 assert.equal(validate(hardOversizeBlocked).status, 0, "oversized preliminary scan should report an advisory split recommendation without rejecting the PR");
+fs.writeFileSync(diffNumstatPath, "10\t2\tsrc/example.ts\n");
+
+const atomicSystemMigration = makeReport();
+atomicSystemMigration.summary =
+  "Exhaustive review found one atomic repository-wide rule migration with consistent project updates";
+atomicSystemMigration.preReview.reviewability.additions = 6290;
+atomicSystemMigration.preReview.reviewability.scopeShape = "atomic-system-migration";
+atomicSystemMigration.preReview.reviewability.rationale =
+  "Every changed path adopts one repository-wide lint contract and must land together";
+atomicSystemMigration.preReview.reviewability.atomicSystemMigration = {
+  rationale: "The shared lint profile and project baselines form one repository-wide migration contract",
+  partialLandingRisk:
+    "Splitting projects would enforce incompatible diagnostics across the same workspace and leave baselines inconsistent",
+  evidence: ["artifact:lint-rule-migration-manifest.json"],
+  consistencyChecks: [
+    {
+      name: "Rule, profile, baseline, manifest, and test consistency",
+      paths: ["src/example.ts"],
+      evidence: ["src/example.ts:1"],
+      conclusion: "The changed project applies the same rule contract and has no unexplained outlier",
+    },
+  ],
+};
+fs.writeFileSync(diffNumstatPath, "6290\t2\tsrc/example.ts\n");
+assert.equal(
+  validate(atomicSystemMigration).status,
+  0,
+  "an evidenced atomic system migration remains reviewable above churn thresholds",
+);
+
+const atomicMigrationWithSplitFinding = structuredClone(atomicSystemMigration);
+atomicMigrationWithSplitFinding.findings.push({
+  id: "R-ATOMIC-SPLIT",
+  severity: "Important",
+  category: "reviewability",
+  path: "src/example.ts",
+  line: 1,
+  description: "Split the repository-wide migration by project",
+  impact: "The reviewer incorrectly treats project boundaries as independent behavior",
+  suggestedFix: "Land projects separately",
+  evidence: ["src/example.ts:1"],
+});
+atomicMigrationWithSplitFinding.counts.important = 1;
+atomicMigrationWithSplitFinding.verdict = "COMMENT";
+assert.equal(
+  validate(atomicMigrationWithSplitFinding).status,
+  1,
+  "validated atomic migrations reject split or reviewability findings",
+);
+
+const incompleteAtomicMigration = structuredClone(atomicSystemMigration);
+incompleteAtomicMigration.preReview.reviewability.atomicSystemMigration.consistencyChecks[0].paths = [];
+assert.equal(
+  validate(incompleteAtomicMigration).status,
+  1,
+  "atomic migration evidence must cover every changed path",
+);
 fs.writeFileSync(diffNumstatPath, "10\t2\tsrc/example.ts\n");
 
 const mechanicalHardCeilingBypass = makeReport();

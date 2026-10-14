@@ -181,7 +181,20 @@ production-ready fields, then return immediately. Do not continue into Pass 1.
 
 First inspect the request, actual plan, available PR title/description, linked work item/design, and bug repro evidence. Record the intended outcome, whether the change is necessary and scoped appropriately, and whether the implementation matches that intent. Missing optional context must be reported, not invented.
 
-Run the contract's reviewability gate before detailed review. Graduation-only PRs use its explicit no-size-limit/no-split exemption. For every other PR, enumerate independent behavior units and high-risk domains; do not equate reading every line with reliable exhaustive review. A `must-split` change still gets a preliminary risk scan, an Important `reviewability` finding asking the author to split, explicit split boundaries, and a `preliminary-non-exhaustive` completeness claim. Continue the available review. Churn, file count, behavior-unit count, or high-risk-domain count alone must not produce `REQUEST_CHANGES`; the `reviewability` category is advisory for verdict purposes.
+Run the contract's reviewability gate before detailed review. First classify the scope as
+`independent-units`, `atomic-system-migration`, or `graduation-only`; package and project boundaries
+do not prove independent behavior. A repository-wide rule/profile/baseline migration that must land
+consistently across projects is one atomic unit when shared-contract, partial-landing-risk, and
+all-path consistency/outlier evidence prove it. Do not recommend splitting that migration by
+project, regardless of file or line count.
+
+Graduation-only PRs use their explicit no-size-limit/no-split exemption. A genuine `must-split`
+change still gets an Important advisory `reviewability` finding, independently landable boundaries,
+and a `preliminary-non-exhaustive` claim, but that finding never ends the review. Continue
+substantive review through every changed file, behavior unit, consumer path, rollout boundary, and
+relevant test surface; record exact coverage gaps. A report containing only the split recommendation
+is incomplete. Churn, file count, behavior-unit count, or high-risk-domain count alone must not
+produce `REQUEST_CHANGES`; only separate product defects block the PR.
 
 ```bash
 cd "${reviewRoot:-$(git rev-parse --show-toplevel)}"

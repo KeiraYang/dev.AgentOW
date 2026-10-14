@@ -1344,17 +1344,27 @@ function validate(report, options) {
     reviewability?.changedFileCount === expectedFiles.length &&
     reviewability?.additions === additions &&
     reviewability?.deletions === deletions;
+  const scopeShape = reviewability?.scopeShape;
+  const validScopeShape = graduationOnly
+    ? scopeShape === "graduation-only"
+    : ["independent-units", "atomic-system-migration"].includes(scopeShape);
+  const validSubstantiveReview =
+    reviewability?.substantiveReviewCompleted === true &&
+    Array.isArray(reviewability?.coverageGaps) &&
+    reviewability.coverageGaps.every(specific);
   if (
     !isObject(reviewability) ||
     !["reviewable", "must-split"].includes(reviewability.status) ||
+    !validScopeShape ||
     !metricsMatch ||
     !validUnits ||
     !validDomains ||
     !validMechanicalEvidence ||
+    !validSubstantiveReview ||
     !specific(reviewability.rationale) ||
     !["exhaustive", "preliminary-non-exhaustive"].includes(reviewability.completenessClaim)
   ) {
-    errors.push("preReview.reviewability requires exact Git metrics, behavior units, risk domains, evidence, rationale, and completeness");
+    errors.push("preReview.reviewability requires scope shape, exact Git metrics, behavior units, risk domains, substantive review, evidence, rationale, and completeness");
   } else {
     const totalChurn = additions + deletions;
     const substantiveChurn = totalChurn - generatedOrMechanicalLines;
@@ -1374,11 +1384,42 @@ function validate(report, options) {
       Array.isArray(exception.evidence) &&
       exception.evidence.length > 0 &&
       exception.evidence.every(evidenceReference);
+    const atomicMigration = reviewability.atomicSystemMigration;
+    const atomicCheckPaths = new Set(
+      (atomicMigration?.consistencyChecks ?? []).flatMap((check) =>
+        Array.isArray(check?.paths) ? check.paths : [],
+      ),
+    );
+    const validAtomicMigration =
+      scopeShape === "atomic-system-migration" &&
+      isObject(atomicMigration) &&
+      reviewability.independentBehaviorUnits.length === 1 &&
+      specific(atomicMigration.rationale) &&
+      specific(atomicMigration.partialLandingRisk) &&
+      Array.isArray(atomicMigration.evidence) &&
+      atomicMigration.evidence.length > 0 &&
+      atomicMigration.evidence.every(evidenceReference) &&
+      Array.isArray(atomicMigration.consistencyChecks) &&
+      atomicMigration.consistencyChecks.length > 0 &&
+      atomicMigration.consistencyChecks.every(
+        (check) =>
+          isObject(check) &&
+          specific(check.name) &&
+          Array.isArray(check.paths) &&
+          check.paths.length > 0 &&
+          check.paths.every((checkPath) => expectedFiles.includes(checkPath)) &&
+          Array.isArray(check.evidence) &&
+          check.evidence.length > 0 &&
+          check.evidence.every(evidenceReference) &&
+          specific(check.conclusion),
+      ) &&
+      sameStrings([...atomicCheckPaths].sort(), expectedFiles);
     if (!sameStrings([...behaviorUnitPaths].sort(), expectedFiles)) {
       errors.push("behavior units must cover every Git changed file");
     }
     const mustSplit =
       !graduationOnly &&
+      !validAtomicMigration &&
       (totalChurn >= HARD_CHURN_LIMIT ||
         substantiveChurn >= LARGE_CHURN_LIMIT ||
         (structurallyLargeChange && !validException));
@@ -1387,6 +1428,15 @@ function validate(report, options) {
     }
     if (!mustSplit && reviewability.status !== "reviewable") {
       errors.push("reviewability status must match the measured change");
+    }
+    if (scopeShape === "atomic-system-migration" && !validAtomicMigration) {
+      errors.push("atomic system migrations require one behavior unit and complete shared-contract, partial-landing, consistency, and outlier evidence");
+    }
+    if (
+      validAtomicMigration &&
+      report.findings?.some((finding) => finding.category === "reviewability")
+    ) {
+      errors.push("validated atomic system migrations must not include split or reviewability findings");
     }
     if (
       reviewability.status === "must-split" &&
