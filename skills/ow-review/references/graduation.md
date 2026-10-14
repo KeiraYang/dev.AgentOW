@@ -367,12 +367,6 @@ compilation or a no-match gate-name search.
 <Switch checked={isFallbackEnabled} onChange={setFallbackEnabled} />
 ```
 
-Substitute only the retired operand before simplifying composite UI predicates. For example,
-`independentKs() || retiredFlight()` with a permanently disabled Flight becomes
-`independentKs()`, not unconditional `true` and not removal of the independent KS. Conversely,
-`retiredFlight() && independentCondition` becomes unreachable in the disabled state. Use the full
-old expression as the substitution oracle for JSX visibility, state initialization, and effects.
-
 ```ts
 // Before graduation: dimensions serve only the retired Flight branch
 const width: number | undefined = containerDivRef?.current?.offsetWidth;
