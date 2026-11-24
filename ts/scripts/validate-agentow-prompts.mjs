@@ -30,6 +30,16 @@ const sharedUtilityReuseSnippets = [
 ];
 
 const commonReviewIssueSnippets = [
+  "### ECS client-flight lifecycle and generated registration",
+  "<!-- review-rule: ecs.current-guidance -->",
+  "<!-- review-rule: ecs.initialization-owner -->",
+  "<!-- review-rule: ecs.registration-automation -->",
+  "<!-- review-rule: ecs.merge-versus-activation -->",
+  "do not require each consumer to initialize it again",
+  "do not ask the consumer PR to hand-assign an index",
+  "is not by itself a merge blocker",
+  "safe disabled fallback",
+  "a violated merge contract, a build/runtime failure, an unsafe fallback",
   "Evaluate a Flight/KS before any new-path-only helper",
   "Trace imports and calls transitively",
   "Gate behavior, not syntax",
@@ -647,6 +657,9 @@ const checks = [
   {
     file: "copilot/skills/ow-review/SKILL.md",
     snippets: [
+      "For general reviews adding or migrating named ECS client flights",
+      "resolved guidance paths or source links to the reviewer in `contextDocuments`",
+      "manifest entry at the PR head alone does not establish a merge blocker",
       "tools/ado-pr-show.mjs",
       "tools/cached-fetch.mjs",
       "verifies the exact PR head",
@@ -985,6 +998,11 @@ const checks = [
   {
     file: "copilot/agents/reviewer.agent.md",
     snippets: [
+      "For named ECS client-flight additions or migrations",
+      'generated registration" section of `common-review-issues.md`',
+      "registration, code merge, and rollout activation",
+      "generated entry alone",
+      "Missing guidance is an evidence gap, not an invented policy",
       "Pass 1: immutable scope and risk",
       "Pass 2: adversarial verification",
       "at least one falsifiable failure hypothesis",

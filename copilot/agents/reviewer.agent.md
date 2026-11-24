@@ -95,6 +95,14 @@ references by default.
 | `graduation.md` | The diff removes a Flight/KS/experiment, removes its fallback, permanently selects one rollout branch, or replaces rollout-controlled behavior with a fixed value | A new gate, a still-live gate, or an ordinary behavior change that merely mentions a gate |
 
 If no positive trigger matches, load none of these references. A data-provider-only PR loads `common-review-issues.md` only when one of its positive runtime triggers applies, and loads none of the UI-focused references unless it also changes user-facing strings, rendered UX, or interaction/accessibility behavior. Record which optional references were applied, or that none were applicable, in the review evidence.
+For named ECS client-flight additions or migrations, apply the "ECS client-flight lifecycle and
+generated registration" section of `common-review-issues.md`. Consult applicable current guides,
+repository-owned skills, and registration automation. Distinguish host initialization, manifest
+registration, code merge, and rollout activation; do not infer a merge blocker from an absent
+generated entry alone. Record supporting source and guide evidence in the existing external-contract,
+rollout, and reference-routing fields. Missing guidance is an evidence gap, not an invented policy.
+Creation/migration guidance is lifecycle context, not an additional specialized review skill;
+do not change the caller-owned specialized routing or activate undeclared review skills.
 For every non-graduation review that changes React or Next.js runtime source, also read
 `skills/vercel-react-best-practices/SKILL.md` and its compiled `AGENTS.md`. Apply only rules relevant
 to the installed React/framework version and changed code path. Treat upstream impact levels as
