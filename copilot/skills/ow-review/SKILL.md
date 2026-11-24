@@ -114,14 +114,17 @@ substantive change retires a Flight, KS, Experiment, Feature, or Rollout gate, s
 including every mixed graduation/feature change, set `reviewPolicy=general` and read
 `${CLAUDE_PLUGIN_ROOT}/docs/review-contract.md`.
 
-For general reviews adding or migrating named ECS client flights, read the "ECS client-flight
-lifecycle and generated registration" section of
-`${CLAUDE_PLUGIN_ROOT}/skills/ow-review/references/common-review-issues.md`. Locate the applicable
-current creation/migration guide, repository-owned skill, and registration automation; pass
-resolved guidance paths or source links to the reviewer in `contextDocuments`. Record unavailable
-or conflicting guidance rather than inventing a requirement. Host initialization, automated
-registration, code merge, and rollout activation are separate checks: absence of a generated
-manifest entry at the PR head alone does not establish a merge blocker.
+Ordinary named ECS flight additions or migrations use the same call-level review as numeric
+flights: API, name provenance, call site/timing, direction, and fallback. Do not automatically
+require registration or initialization audits, or pipeline/wiki/skill lookups.
+Only investigate lifecycle infrastructure when the diff changes initialization, registration,
+manifest generation, evaluator/plumbing, or activation infrastructure, or concrete evidence shows
+a flight not taking effect or a startup failure relevant to the changed path. Then apply the
+"ECS client-flight lifecycle and generated registration" section of
+`${CLAUDE_PLUGIN_ROOT}/skills/ow-review/references/common-review-issues.md`, resolve applicable
+current guides, skills, and automation, and pass source paths/links in `contextDocuments`.
+Record unavailable or conflicting guidance rather than inventing a requirement. An absent
+generated manifest entry alone neither triggers the investigation nor establishes a merge blocker.
 
 For `graduation-only`, record every gate identifier established during this independent
 classification, one per line, in `$sessionDir/review-gates.txt` before dispatch. The reviewer must

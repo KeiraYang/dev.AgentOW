@@ -39,6 +39,7 @@ assert.ok(
 );
 
 const ecsLifecycleRuleIds = [
+  "ecs.review-scope",
   "ecs.current-guidance",
   "ecs.initialization-owner",
   "ecs.registration-automation",

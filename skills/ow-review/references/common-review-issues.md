@@ -118,12 +118,21 @@ into the helper: KS activated produces the exact old result, while KS not activa
 
 ### ECS client-flight lifecycle and generated registration
 
-**Trigger:** a named ECS client flight is added or migrated, or a review conclusion depends on
-flight initialization, registration, or rollout readiness.
+<!-- review-rule: ecs.review-scope -->
+Ordinary named ECS flight additions or migrations use the same call-level review as numeric
+flights: verify the supported API, name provenance, call site and timing, enabled/disabled
+direction, and fallback. Do not require extra manifest scans, host initialization traces, or
+pipeline/wiki/skill lookups solely because a consumer adds or changes an ECS flight call.
+
+**Investigation trigger:** the diff changes host/SDK initialization, registration or manifest
+generation, flight evaluators/plumbing, or activation infrastructure; or concrete evidence shows
+a flight not taking effect or a startup failure relevant to the changed path. An absent generated
+entry alone does not trigger this investigation. Apply the checks below only when triggered.
 
 <!-- review-rule: ecs.current-guidance -->
-Read the applicable current flight-creation or migration guide, repository-owned skill, and
-registration automation before recommending registration changes. Discover guidance through the
+For a triggered investigation, read the applicable current creation/migration guide,
+repository-owned skill, and registration automation before recommending registration changes.
+Discover guidance through the
 advertised capabilities, supplied context, or a bounded repository search; do not invent a skill
 or assume it is available. A debug-toggle skill explains overrides, not necessarily registration.
 If a guide is unavailable or conflicts with current automation, record the gap or conflict and
